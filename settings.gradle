@@ -1,2 +1,12 @@
+pluginManagement {
+    repositories {
+        // allow the plugins { } block to resolve the Android Gradle Plugin
+        gradlePluginPortal()
+        google()
+        mavenCentral()
+    }
+}
 rootProject.name = 'ftc-auto-logger'
+
+// include your two library modules
 include ':FtcWpiLogger', ':Logging-processor'

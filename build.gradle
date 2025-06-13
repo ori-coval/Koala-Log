@@ -1,3 +1,7 @@
+plugins {
+    id 'com.android.library' version '7.0.4' apply false
+}
+
 allprojects {
     group = 'com.github.ori-coval.ftc-auto-logger'
     version = '1.0.0'  // match your release tag
