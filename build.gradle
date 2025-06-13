@@ -1,11 +1,21 @@
-plugins {
-    id 'com.android.library' version '7.0.4' apply false
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.3'
+    }
 }
 
 allprojects {
-    group = 'com.github.ori-coval.ftc-auto-logger'
-    version = '1.2.1'  // match your release tag
+    group = 'com.github.ori-coval'
+    version = '1.0.0'  // you can bump for new releases or let JitPack use tags
+
     repositories {
+        google()
         mavenCentral()
+        maven { url 'https://jitpack.io' }
+        maven { url 'https://maven.brott.dev/' } // for FTC Dashboard
     }
 }

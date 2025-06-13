@@ -4,40 +4,60 @@ plugins {
 }
 
 android {
-    compileSdkVersion 28
+    compileSdk 33
+    namespace 'ori.coval.ftcautologger'
+
     defaultConfig {
-        minSdkVersion 24
-        targetSdkVersion 28
+        minSdk 24
+        targetSdk 33
     }
-    // (rest of Android config)
 }
 
-publishing {
-    publications {
-        release(MavenPublication) {
-            groupId = 'com.github.ori-coval.ftc-auto-logger'
-            artifactId = 'FtcWpiLogger'
-            version = project.version // e.g., '1.0.0'
-            afterEvaluate {
-                from components.release
+dependencies {
+    implementation 'com.acmerobotics.dashboard:dashboard:0.4.16'
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            mavenAar(MavenPublication) {
+                groupId    = project.group           // com.github.ori-coval
+                artifactId = 'FtcWpiLogger'
+                version    = project.version         // e.g. 1.0.0
+
+                artifact("$buildDir/outputs/aar/${project.getName()}-release.aar") {
+                    builtBy tasks.named("bundleReleaseAar")
+                }
+
+                pom {
+                    name        = 'FtcWpiLogger'
+                    description = 'FTC WPI Logger Android library'
+                    url         = 'https://github.com/ori-coval/ftc-auto-logger'
+                    licenses {
+                        license {
+                            name = 'MIT License'
+                            url  = 'https://opensource.org/licenses/MIT'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id    = 'ori-coval'
+                            name  = 'Ori Coval'
+                            email = 'you@example.com'
+                        }
+                    }
+                    scm {
+                        connection          = 'scm:git:git://github.com/ori-coval/ftc-auto-logger.git'
+                        developerConnection = 'scm:git:ssh://github.com:ori-coval/ftc-auto-logger.git'
+                        url                 = 'https://github.com/ori-coval/ftc-auto-logger'
+                    }
+                }
             }
         }
     }
-}
 
-repositories {
-    maven {
-        url = 'https://maven.brott.dev/'
+    // Ensure bundleReleaseAar runs before publish to local
+    tasks.named("publishMavenAarPublicationToMavenLocal") {
+        dependsOn tasks.named("bundleReleaseAar")
     }
 }
-dependencies {
-    // Android API
-
-    // FTC Dashboard
-    implementation "com.acmerobotics.dashboard:dashboard:0.4.16"
-
-    // (If you only reference Dashboard in generated code, you can make it compileOnly
-    //  here, and let your TeamCode module pull it in at runtime.)
-}
-
-// make sure to publish this module or include it as a project dependency in TeamCode
