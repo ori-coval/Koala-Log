@@ -4,7 +4,7 @@ plugins {
 
 allprojects {
     group = 'com.github.ori-coval.ftc-auto-logger'
-    version = '1.0.0'  // match your release tag
+    version = '1.2.1'  // match your release tag
     repositories {
         mavenCentral()
     }
