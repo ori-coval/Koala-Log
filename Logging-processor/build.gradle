@@ -1,12 +1,19 @@
 plugins {
-    id("java")
+    id 'java-library'
+    id 'maven-publish'
 }
-
 
 dependencies {
-    implementation("com.squareup:javapoet:1.13.0")
+    // your annotation processor dependencies, if any
 }
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.github.ori-coval.ftc-auto-logger'
+            artifactId = 'Logging-processor'
+            version = project.version // e.g., '1.0.0'
+            from components.java
+        }
+    }
 }
