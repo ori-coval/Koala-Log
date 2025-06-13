@@ -1,0 +1,5 @@
+<!-- AFTER: no package attribute here -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- …other stuff… -->
+</manifest>

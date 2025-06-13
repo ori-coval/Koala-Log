@@ -1,0 +1,36 @@
+// logging/build.gradle
+
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    compileSdkVersion 28
+
+    namespace "Ori.Coval.Logging"
+
+    defaultConfig {
+        minSdkVersion 24
+        //ignore this error its fine
+        targetSdkVersion 28
+    }
+
+    namespace "Ori.Coval.Logging"
+}
+
+repositories {
+    maven {
+        url = 'https://maven.brott.dev/'
+    }
+}
+dependencies {
+    // Android API
+
+    // FTC Dashboard
+    implementation "com.acmerobotics.dashboard:dashboard:0.4.16"
+
+    // (If you only reference Dashboard in generated code, you can make it compileOnly
+    //  here, and let your TeamCode module pull it in at runtime.)
+}
+
+// make sure to publish this module or include it as a project dependency in TeamCode
