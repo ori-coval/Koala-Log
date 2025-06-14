@@ -1,27 +1,67 @@
 # FTC Auto Logger
 
-**FTC Auto Logger** is a powerful logging system for FTC robots that produces `.wpilog` files fully compatible with [Advantage Scope](https://github.com/Mechanical-Advantage/AdvantageScope), enabling detailed log analysis and visualization.
+**FTC Auto Logger** is a logging framework for FTC robots that generates `.wpilog` files fully compatible with [Advantage Scope](https://docs.advantagescope.org). It enables rich telemetry, data capture, and visual analysis — just like in FRC.
+
+[![](https://jitpack.io/v/ori-coval/ftc-auto-logger.svg)](https://jitpack.io/#ori-coval/ftc-auto-logger)
 
 ---
 
-## 📦 Components
+## 🚀 How to Add to Your FTC Project
 
-### [FtcWpiLogger](FtcWpiLogger)
-A FTC‑compatible logger. Major parts include:
-- **AutoLogManager.java** – automatically registers and manages loggable objects.
-- **WpiLog.java** – creates and manages `.wpilog` file sessions, handles data streams, and ensures proper formatting for Advantage Scope.
-- **Logged.java** – interface marking classes whose data should be serialized and logged.
+To start logging FTC data in the `.wpilog` format:
 
-### [Logging‑Processor](Logging-processor)
-Annotation processor that scans for `@AutoLog` annotations and generates corresponding `Logged` implementations, enabling automatic data capture.
+1. **Add the JitPack repository** to your `TeamCode/build.gradle` below the android block:
 
-### [LogPuller](LogPuller)
-ADB-based tools for retrieving logs from the Control Hub:
-- `FTCLogPuller.exe` – downloads logs without removing them.
-- `PullAndDeleteLogs.exe` – downloads logs and deletes them from the hub.
+   ```groovy
+   android {
+       // your existing config...
+   }
 
-### [LogPullerDevelopment](LogPullerDevelopment)
-Build scripts and tooling for executable generation:
-- PowerShell scripts for each EXE.
-- `build_exe.bat` – compiles EXEs via PS2EXE.
+   repositories {
+       maven { url 'https://jitpack.io' }
+   }
+   ```
 
+2. **Add the dependencies** inside the same `build.gradle`:
+
+   ```groovy
+   dependencies {
+       implementation 'com.github.ori-coval.ftc-auto-logger:FtcWpiLogger:<version>'
+       annotationProcessor 'com.github.ori-coval.ftc-auto-logger:logging-processor:<version>'
+   }
+   ```
+
+   Replace `<version>` with the latest version shown below:  
+   [![](https://jitpack.io/v/ori-coval/ftc-auto-logger.svg)](https://jitpack.io/#ori-coval/ftc-auto-logger)
+
+---
+
+## 📦 Project Structure
+
+### [`FtcWpiLogger`](FtcWpiLogger)
+The core runtime library used in your robot code:
+- **`AutoLogManager.java`** – Registers and manages all loggable instances.
+- **`WpiLog.java`** – Manages `.wpilog` files, handles timestamps, and serializes data.
+- **`Logged.java`** – Interface for objects that should be recorded in the log.
+
+### [`Logging-Processor`](Logging-processor)
+Annotation processor for generating logging boilerplate:
+- Automatically processes `@AutoLog` annotations.
+- Generates `Logged` interface implementations at compile time.
+
+### [`LogPuller`](LogPuller)
+Tools to retrieve logs from the Control Hub over ADB:
+- `FTCLogPuller.exe` – Pull logs without deleting.
+- `PullAndDeleteLogs.exe` – Pull logs and clean up the hub afterward.
+
+### [`LogPullerDevelopment`](LogPullerDevelopment)
+Build system and scripts to generate `.exe` tools:
+- PowerShell scripts used for packaging.
+- `build_exe.bat` – Converts `.ps1` scripts to `.exe` using PS2EXE.
+
+---
+
+## 🙌 Contributions & Support
+
+Want to improve or contribute? Found a bug?  
+Open an issue or a pull request here: [https://github.com/ori-coval/ftc-auto-logger](https://github.com/ori-coval/ftc-auto-logger)
