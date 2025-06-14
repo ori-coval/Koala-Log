@@ -7,7 +7,7 @@
 ## 📦 Components
 
 ### [FtcWpiLogger](FtcWpiLogger)
-A lightweight FTC‑compatible logger. Major parts include:
+A FTC‑compatible logger. Major parts include:
 - **AutoLogManager.java** – automatically registers and manages loggable objects.
 - **WpiLog.java** – creates and manages `.wpilog` file sessions, handles data streams, and ensures proper formatting for Advantage Scope.
 - **Logged.java** – interface marking classes whose data should be serialized and logged.
