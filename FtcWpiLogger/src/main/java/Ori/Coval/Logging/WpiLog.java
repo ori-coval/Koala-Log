@@ -33,9 +33,6 @@ public class WpiLog implements Closeable {
     private static int largestId = 0;
     private static long startTime = System.nanoTime() / 1000;
 
-    public static void register(Logged loggedClass) {
-    }
-
     /**
      * Set up logging to a file named 'robot.wpilog' in SD or internal.
      */

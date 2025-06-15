@@ -15,8 +15,12 @@ Thumbs.db
 # === Gradle ===
 .gradle/
 **/.gradle/
+
+# === Build outputs ===
 **/build/
 out/
+
+# Don’t ignore the Gradle wrapper itself
 !gradle-wrapper.jar
 
 # === Java / Kotlin Build ===
