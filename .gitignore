@@ -1,0 +1,43 @@
+# === General ===
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# === IntelliJ / Android Studio ===
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# === Gradle ===
+.gradle/
+**/.gradle/
+**/build/
+out/
+!gradle-wrapper.jar
+
+# === Java / Kotlin Build ===
+bin/
+gen/
+*.class
+
+# === Local configuration ===
+local.properties
+
+# === OS files ===
+*.sublime-workspace
+*.sublime-project
+
+# === Git ===
+*.orig
+
+# === Others ===
+/captures/
+/.externalNativeBuild/
+/.cxx/
+
+# === Exclude ADB folder ===
+adb/
