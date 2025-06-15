@@ -26,8 +26,8 @@ To start logging FTC data in the `.wpilog` format:
 
    ```groovy
    dependencies {
-       implementation 'com.github.ori-coval.ftc-auto-logger:FtcWpiLogger:<version>'
-       annotationProcessor 'com.github.ori-coval.ftc-auto-logger:logging-processor:<version>'
+       implementation 'com.github.ori-coval.Koala-Log:FtcWpiLogger:v1.0.0'
+       annotationProcessor 'com.github.ori-coval.Koala-Log:logging-processor:v1.0.0'
    }
    ```
 
