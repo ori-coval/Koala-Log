@@ -1,38 +1,19 @@
 # FTC Auto Logger
 
-**FTC Auto Logger** is a logging framework for FTC robots that generates `.wpilog` files fully compatible with [Advantage Scope](https://docs.advantagescope.org). It enables rich telemetry, data capture, and visual analysis — just like in FRC.
+**KoalaLog** is a logging framework for FTC robots that generates `.wpilog` files fully compatible with [Advantage Scope](https://docs.advantagescope.org). It enables rich telemetry and data capture — just like in FRC.
 
-   [![](https://jitpack.io/v/ori-coval/Koala-Log.svg)](https://jitpack.io/#ori-coval/Koala-Log)
+[![](https://jitpack.io/v/ori-coval/Koala-Log.svg)](https://jitpack.io/#ori-coval/Koala-Log)
 
 ---
 
-## 🚀 How to Add to Your FTC Project
+## 🚀 Getting Started
 
-To start logging FTC data in the `.wpilog` format:
+To get started with KoalaLog, follow the setup instructions in the wiki:
 
-1. **Add the JitPack repository** to your `TeamCode/build.gradle` below the android block:
-
-   ```groovy
-   android {
-       // your existing config...
-   }
-
-   repositories {
-       maven { url 'https://jitpack.io' }
-   }
-   ```
-
-2. **Add the dependencies** inside the same `build.gradle`:
-
-   ```groovy
-   dependencies {
-       implementation 'com.github.ori-coval.Koala-Log:FtcWpiLogger:<version>'
-       annotationProcessor 'com.github.ori-coval.Koala-Log:logging-processor:<version>'
-   }
-   ```
-
-   Replace `<version>` with the latest version shown below:  
-   [![](https://jitpack.io/v/ori-coval/Koala-Log.svg)](https://jitpack.io/#ori-coval/Koala-Log)
+📖 **[KoalaLog Wiki](https://github.com/ori-coval/Koala-Log/wiki)**  
+- [How to Add to Your FTC Project](https://github.com/ori-coval/Koala-Log/wiki/1.-How-to-add-to-project)  
+- [How to Use in Your Code](https://github.com/ori-coval/Koala-Log/wiki/2.-how-to-use-in-your-code)  
+- [How to Get the Log](https://github.com/ori-coval/Koala-Log/wiki/3.-how-to-get-the-log)
 
 ---
 
@@ -64,4 +45,4 @@ Build system and scripts to generate `.exe` tools:
 ## 🙌 Contributions & Support
 
 Want to improve or contribute? Found a bug?  
-Open an issue or a pull request here: [https://github.com/ori-coval/ftc-auto-logger](https://github.com/ori-coval/ftc-auto-logger)
+Open an issue or a pull request here: [https://github.com/ori-coval/Koala-Log](https://github.com/ori-coval/Koala-Log)
