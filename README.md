@@ -2,7 +2,7 @@
 
 **FTC Auto Logger** is a logging framework for FTC robots that generates `.wpilog` files fully compatible with [Advantage Scope](https://docs.advantagescope.org). It enables rich telemetry, data capture, and visual analysis — just like in FRC.
 
-[![](https://jitpack.io/v/ori-coval/ftc-auto-logger.svg)](https://jitpack.io/#ori-coval/ftc-auto-logger)
+   [![](https://jitpack.io/v/ori-coval/Koala-Log.svg)](https://jitpack.io/#ori-coval/Koala-Log)
 
 ---
 
