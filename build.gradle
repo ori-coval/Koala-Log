@@ -4,13 +4,13 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.3'
+        classpath 'com.android.tools.build:gradle:8.7.0'
     }
 }
 
 allprojects {
     group = 'com.github.ori-coval'
-    version = '1.0.0'  // you can bump for new releases or let JitPack use tags
+    version = '1.0.1'
 
     repositories {
         google()
