@@ -94,16 +94,16 @@ public class WpiLog implements Closeable {
     }
 
     // ─── Control records ─────────────────────────────────────────────────────
-    private static void startEntry(int entryId, String name, String type, long ts) throws IOException {
+    private static void startEntry(int entryId, String name, String type, String metadata, long ts) throws IOException {
         ByteArrayOutputStream bb = new ByteArrayOutputStream();
-        bb.write(0);
-        bb.write(le32(entryId));
-        bb.write(le32(name.length()));
-        bb.write(name.getBytes(StandardCharsets.UTF_8));
-        bb.write(le32(type.length()));
-        bb.write(type.getBytes(StandardCharsets.UTF_8));
-        bb.write(le32("".length()));
-        bb.write("".getBytes(StandardCharsets.UTF_8));
+        bb.write(0);                              // control = Start
+        bb.write(le32(entryId));                  // entry ID
+        byte[] nameB = name.getBytes(StandardCharsets.UTF_8);
+        bb.write(le32(nameB.length)); bb.write(nameB);
+        byte[] typeB = type.getBytes(StandardCharsets.UTF_8);
+        bb.write(le32(typeB.length)); bb.write(typeB);
+        byte[] metaB = metadata.getBytes(StandardCharsets.UTF_8);
+        bb.write(le32(metaB.length)); bb.write(metaB);
         writeRecord(0, bb.toByteArray(), ts);
     }
 
@@ -138,7 +138,7 @@ public class WpiLog implements Closeable {
     public static boolean log(String name, boolean value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "boolean", nowMicros());
+                startEntry(getID(name), name, "boolean", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -146,7 +146,7 @@ public class WpiLog implements Closeable {
 
         try {
             logBoolean(getID(name), value, nowMicros());
-            if(PostToFTCDashboard){
+            if (PostToFTCDashboard) {
                 FtcDashboard.getInstance().getTelemetry().addData(name, value);
             }
         } catch (IOException e) {
@@ -159,7 +159,7 @@ public class WpiLog implements Closeable {
     public static Object log(String name, Object obj, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "object", nowMicros());
+                startEntry(getID(name), name, "object", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -180,7 +180,7 @@ public class WpiLog implements Closeable {
     public static long log(String name, long value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "int64", nowMicros());
+                startEntry(getID(name), name, "int64", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -201,7 +201,7 @@ public class WpiLog implements Closeable {
     public static float log(String name, float value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "float", nowMicros());
+                startEntry(getID(name), name, "float", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -222,7 +222,7 @@ public class WpiLog implements Closeable {
     public static double log(String name, double value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "double", nowMicros());
+                startEntry(getID(name), name, "double", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -243,7 +243,7 @@ public class WpiLog implements Closeable {
     public static String log(String name, String value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "string", nowMicros());
+                startEntry(getID(name), name, "string", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -264,7 +264,7 @@ public class WpiLog implements Closeable {
     public static boolean[] log(String name, boolean[] value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "boolean[]", nowMicros());
+                startEntry(getID(name), name, "boolean[]", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -286,7 +286,7 @@ public class WpiLog implements Closeable {
     public static long[] log(String name, long[] value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "int64[]", nowMicros());
+                startEntry(getID(name), name, "int64[]", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -307,7 +307,7 @@ public class WpiLog implements Closeable {
     public static float[] log(String name, float[] value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "float[]", nowMicros());
+                startEntry(getID(name), name, "float[]", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -328,7 +328,7 @@ public class WpiLog implements Closeable {
     public static double[] log(String name, double[] value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "double[]", nowMicros());
+                startEntry(getID(name), name, "double[]", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -349,7 +349,7 @@ public class WpiLog implements Closeable {
     public static String[] log(String name, String[] value, boolean PostToFTCDashboard) {
         if (!recordIDs.containsKey(name)) {
             try {
-                startEntry(getID(name), name, "String[]", nowMicros());
+                startEntry(getID(name), name, "String[]", "", nowMicros());
             } catch (IOException e) {
                 e.printStackTrace();
             }
