@@ -5,7 +5,7 @@ plugins {
 
 android {
     compileSdk 33
-    namespace 'ori.coval.ftcautologger'
+    namespace 'ori.coval.KoalaLogger'
 
     defaultConfig {
         minSdk 24
@@ -22,7 +22,7 @@ afterEvaluate {
         publications {
             mavenAar(MavenPublication) {
                 groupId    = project.group           // com.github.ori-coval
-                artifactId = 'FtcWpiLogger'
+                artifactId = 'KoalaLogger'
                 version    = project.version         // e.g. 1.0.0
 
                 artifact("$buildDir/outputs/aar/${project.getName()}-release.aar") {
@@ -30,7 +30,7 @@ afterEvaluate {
                 }
 
                 pom {
-                    name        = 'FtcWpiLogger'
+                    name        = 'KoalaLogger'
                     description = 'FTC WPI Logger Android library'
                     url         = 'https://github.com/ori-coval/ftc-auto-logger'
                     licenses {
