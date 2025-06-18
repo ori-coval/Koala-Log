@@ -21,9 +21,9 @@ afterEvaluate {
     publishing {
         publications {
             mavenAar(MavenPublication) {
-                groupId    = project.group           // com.github.ori-coval
+                groupId    = project.group
                 artifactId = 'KoalaLogger'
-                version    = project.version         // e.g. 1.0.0
+                version    = project.version
 
                 artifact("$buildDir/outputs/aar/${project.getName()}-release.aar") {
                     builtBy tasks.named("bundleReleaseAar")
