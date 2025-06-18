@@ -16,7 +16,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             // Inherit group & version from rootProject
-            artifactId = 'logging-processor'
+            artifactId = 'KoalaLoggingProcessor'
             from components.java
         }
     }

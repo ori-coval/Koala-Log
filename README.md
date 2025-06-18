@@ -19,13 +19,13 @@ To get started with KoalaLog, follow the setup instructions in the wiki:
 
 ## 📦 Project Structure
 
-### [`FtcWpiLogger`](FtcWpiLogger)
+### [`KoalaLogger`](KoalaLogger)
 The core runtime library used in your robot code:
 - **`AutoLogManager.java`** – Registers and manages all loggable instances.
 - **`WpiLog.java`** – Manages `.wpilog` files, handles timestamps, and serializes data.
 - **`Logged.java`** – Interface for objects that should be recorded in the log.
 
-### [`Logging-Processor`](Logging-processor)
+### [`KoalaLoggingProcessor`](KoalaLoggingProcessor)
 Annotation processor for generating logging boilerplate:
 - Automatically processes `@AutoLog` annotations.
 - Generates `Logged` interface implementations at compile time.
