@@ -213,10 +213,10 @@ public class WpiLog implements Closeable {
     }
 
     // Pose2d
-    public static void logPose2d(String name, double x, double y, double rot, boolean post) {
+    public static void logPose2d(String name, double x, double y, double rotation, boolean post) {
         doLog(
                 name,
-                new double[]{x, y, rot},
+                new double[]{x, y, rotation},
                 "struct:Pose2d",
                 (id, v) -> {
                     ByteBuffer buf = ByteBuffer.allocate(3 * Double.BYTES).order(ByteOrder.LITTLE_ENDIAN);
@@ -228,6 +228,40 @@ public class WpiLog implements Closeable {
                 post
         );
     }
+
+    public static void logTranslation2d(String name, double x, double y, boolean post) {
+        doLog(
+                name,
+                new double[]{x, y},
+                "struct:Translation2d",
+                (id, v) -> {
+                    ByteBuffer buf = ByteBuffer.allocate(2 * Double.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+                    buf.putDouble(v[0]); buf.putDouble(v[1]);
+                    writeRecord(id, buf.array(), nowMicros());
+                },
+                (n, v) -> FtcDashboard.getInstance().getTelemetry().addData(n,
+                        String.format(Locale.US, "x=%.2f,y=%.2f", v[0], v[1])),
+                post
+        );
+    }
+
+
+    public static void logRotation2d(String name, double rotation, boolean post) {
+        doLog(
+                name,
+                new double[]{rotation},
+                "struct:Rotation2d",
+                (id, v) -> {
+                    ByteBuffer buf = ByteBuffer.allocate(Double.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+                    buf.putDouble(v[0]);
+                    writeRecord(id, buf.array(), nowMicros());
+                },
+                (n, v) -> FtcDashboard.getInstance().getTelemetry().addData(n,
+                        String.format(Locale.US, "θ=%.2f", v[0])),
+                post
+        );
+    }
+
 
 
     // ─── Internal scalar/array methods (used by doLog lambdas) ─────────────
