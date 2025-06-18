@@ -59,6 +59,14 @@ public class WpiLog implements Closeable {
         startTime = System.nanoTime() / 1000;
         try {
             writeHeader("");
+            // Register nested struct schemas first
+            appendRaw("/.schema/struct:Translation2d", "structschema",
+                    "double x;double y".getBytes(StandardCharsets.UTF_8));
+            appendRaw("/.schema/struct:Rotation2d",    "structschema",
+                    "double value".getBytes(StandardCharsets.UTF_8));
+            // Then register top-level Pose2d schema
+            appendRaw("/.schema/struct:Pose2d",        "structschema",
+                    "Translation2d translation;Rotation2d rotation".getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new RuntimeException("Failed to write WPILOG header", e);
         }
@@ -91,6 +99,18 @@ public class WpiLog implements Closeable {
     @Override
     public void close() throws IOException {
         fos.close();
+    }
+
+    /**
+     * Append a raw payload under the given name and type.
+     * This emits a StartEntry followed by the raw data bytes.
+     */
+    public static void appendRaw(String name, String type, byte[] payload) throws IOException {
+        int id = recordIDs.computeIfAbsent(name, k -> getID(k));
+        // Emit StartEntry
+        startEntry(id, name, type, "", nowMicros());
+        // Emit raw payload record
+        writeRecord(id, payload, nowMicros());
     }
 
     // ─── Control records ─────────────────────────────────────────────────────
@@ -131,6 +151,46 @@ public class WpiLog implements Closeable {
         fos.write(le64(ts));
         fos.write(payload);
     }
+    /**
+     * Log a Pose2d under the given name. Registers the entry if first use.
+     */
+    public static void logPose2d(String name, double x, double y, double rot, boolean postToDashboard) {
+        boolean isNew = false;
+        int id;
+        if (!recordIDs.containsKey(name)) {
+            id = getID(name);
+            isNew = true;
+        } else {
+            id = recordIDs.get(name);
+        }
+
+        try {
+            if (isNew) {
+                // first time: send the control‐Start with struct type
+                startEntry(id, name, "struct:Pose2d", "", nowMicros());
+            }
+
+            // now pack the three doubles
+            ByteBuffer buf = ByteBuffer
+                    .allocate(Double.BYTES * 3)
+                    .order(ByteOrder.LITTLE_ENDIAN);
+            buf.putDouble(x);
+            buf.putDouble(y);
+            buf.putDouble(rot);
+            writeRecord(id, buf.array(), nowMicros());
+
+            // optionally post to dashboard, if you want
+            if (postToDashboard) {
+                FtcDashboard.getInstance()
+                        .getTelemetry()
+                        .addData(name, String.format(Locale.US, "x=%.2f,y=%.2f,θ=%.2f", x, y, rot));
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     // ─── public static logging ──────────────────────────────────────────────────────
 // ─── public static Logging API ──────────────────────────────────────────────────
