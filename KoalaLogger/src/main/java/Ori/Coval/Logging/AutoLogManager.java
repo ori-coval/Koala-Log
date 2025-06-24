@@ -6,6 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AutoLogManager {
+    static {
+        try {
+            Class.forName("Ori.Coval.AutoLog.AutoLogStaticRegistry");
+        } catch (ClassNotFoundException e) {
+            // no statics registered—ignore
+        }
+    }
 
     private static final List<Logged> loggedClasses = new ArrayList<>();
 
