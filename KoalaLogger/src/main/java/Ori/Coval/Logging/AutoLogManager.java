@@ -6,14 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AutoLogManager {
-    static {
-        try {
-            Class.forName("Ori.Coval.AutoLog.AutoLogStaticRegistry");
-        } catch (ClassNotFoundException e) {
-            // no statics registered—ignore
-        }
-    }
-
     private static final List<Logged> loggedClasses = new ArrayList<>();
 
     public static void register(Logged logged){
@@ -26,5 +18,13 @@ public class AutoLogManager {
             loggedClass.toLog();
         }
         FtcDashboard.getInstance().getTelemetry().update();
+    }
+
+    static {
+        try {
+            Class.forName("Ori.Coval.AutoLog.AutoLogStaticRegistry");
+        } catch (ClassNotFoundException e) {
+            // no statics registered—ignore
+        }
     }
 }
