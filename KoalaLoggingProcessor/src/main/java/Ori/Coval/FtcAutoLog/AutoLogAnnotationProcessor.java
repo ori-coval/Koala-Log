@@ -105,29 +105,27 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
         }
         List<Entry> entries = new ArrayList<>();
 
-        // 'elements' should be your collected @AutoLogOutput elements across rounds
+        // 'elements' contains all @AutoLogOutput‐annotated static fields/methods
         for (Element elem : elements) {
-            // only static fields or zero-arg static methods
             boolean isField  = elem.getKind() == ElementKind.FIELD;
             boolean isMethod = elem.getKind() == ElementKind.METHOD
                     && ((ExecutableElement)elem).getParameters().isEmpty();
             if (!(isField || isMethod)) continue;
             if (!elem.getModifiers().contains(Modifier.STATIC)) continue;
 
+            // skip if the enclosing class is itself @AutoLog
             TypeElement enclosing = (TypeElement) elem.getEnclosingElement();
-            boolean classHasAutoLog = enclosing.getAnnotationMirrors().stream()
+            boolean hasAutoLog = enclosing.getAnnotationMirrors().stream()
                     .anyMatch(m -> m.getAnnotationType().toString()
                             .equals("Ori.Coval.Logging.AutoLog"));
-            if (classHasAutoLog) continue;
+            if (hasAutoLog) continue;
 
-            // fully qualified owner class
-            String pkgName  = processingEnv.getElementUtils()
+            // build owner ClassName
+            String pkgName = processingEnv.getElementUtils()
                     .getPackageOf(enclosing).getQualifiedName().toString();
-            String clsName  = enclosing.getSimpleName().toString();
-            ClassName owner = ClassName.get(pkgName, clsName);
-
+            ClassName owner = ClassName.get(pkgName, enclosing.getSimpleName().toString());
             String memberName = elem.getSimpleName().toString();
-            String key        = clsName + "/" + memberName;
+            String key = enclosing.getSimpleName() + "/" + memberName;
 
             boolean postToFtc = getAnnotationValue(
                     elem,
@@ -145,52 +143,75 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                 .addModifiers(Modifier.PUBLIC)
                 .returns(void.class);
 
-        ClassName koalaLog = ClassName.get("Ori.Coval.Logging.Logger", "KoalaLog");
         for (Entry e : entries) {
-            String access = e.isMethod
-                    ? String.format("%s.%s()", "owner", "member")  // placeholder, see below
-                    : String.format("%s.%s",   "owner", "member");
-            // but with JavaPoet we do:
-            if (e.isMethod) {
-                toLog.addStatement(
-                        "$T.log($S, $T.$L(), $L)",
-                        koalaLog,
-                        e.key,
-                        e.owner,
-                        e.member,
-                        e.post
-                );
-            } else {
+            // detect suppliers by return type of static method or field type
+            if (!e.isMethod) {
+                // For static fields, check if it's a Supplier
+                VariableElement field = (VariableElement)
+                        processingEnv.getElementUtils()
+                                .getTypeElement(e.owner.canonicalName())
+                                .getEnclosedElements().stream()
+                                .filter(el -> el.getKind() == ElementKind.FIELD
+                                        && el.getSimpleName().contentEquals(e.member))
+                                .findFirst().get();
+                String fieldType = field.asType().toString();
+                if (fieldType.endsWith("Supplier")) {
+                    // call proper getAsX()
+                    String invoke = "";
+                    if (fieldType.endsWith("DoubleSupplier")) invoke = ".getAsDouble()";
+                    if (fieldType.endsWith("IntSupplier"))    invoke = ".getAsInt()";
+                    if (fieldType.endsWith("LongSupplier"))   invoke = ".getAsLong()";
+                    if (fieldType.endsWith("BooleanSupplier"))invoke = ".getAsBoolean()";
+                    toLog.addStatement(
+                            "$T.log($S, $T.$L$L, $L)",
+                            KOALA_LOG, e.key, e.owner, e.member, invoke, e.post
+                    );
+                    continue;
+                }
+                // non‐supplier static field
                 toLog.addStatement(
                         "$T.log($S, $T.$L, $L)",
-                        koalaLog,
-                        e.key,
-                        e.owner,
-                        e.member,
-                        e.post
+                        KOALA_LOG, e.key, e.owner, e.member, e.post
+                );
+            } else {
+                // static no‐arg method
+                ExecutableElement method = (ExecutableElement)
+                        processingEnv.getElementUtils()
+                                .getTypeElement(e.owner.canonicalName())
+                                .getEnclosedElements().stream()
+                                .filter(el -> el.getKind() == ElementKind.METHOD
+                                        && el.getSimpleName().contentEquals(e.member))
+                                .map(el -> (ExecutableElement) el)
+                                .findFirst().get();
+                String returnType = method.getReturnType().toString();
+                if (returnType.endsWith("Supplier")) {
+                    // should not happen: Supplier methods return Supplier, not primitive/String
+                }
+                // otherwise regular static no‐arg method
+                toLog.addStatement(
+                        "$T.log($S, $T.$L(), $L)",
+                        KOALA_LOG, e.key, e.owner, e.member, e.post
                 );
             }
         }
 
-        // build the registry class
+        // build and write the registry class
         TypeSpec registry = TypeSpec.classBuilder(registryName)
                 .addModifiers(Modifier.PUBLIC)
                 .addSuperinterface(ClassName.get("Ori.Coval.Logging", "Logged"))
                 .addStaticBlock(CodeBlock.of(
                         "$T.register(new $L());",
-                        ClassName.get("Ori.Coval.Logging", "AutoLogManager"),
-                        registryName
+                        AUTO_LOG_MANAGER, registryName
                 ))
                 .addMethod(toLog.build())
                 .build();
 
-        // emit it once (FilerException swallowed)
         try {
             JavaFile.builder(registryPkg, registry)
                     .build()
                     .writeTo(processingEnv.getFiler());
         } catch (FilerException ignored) {
-            // already written, ignore
+            // already written
         } catch (IOException ex) {
             processingEnv.getMessager().printMessage(
                     Diagnostic.Kind.ERROR,
@@ -198,6 +219,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
             );
         }
     }
+
 
 
 
