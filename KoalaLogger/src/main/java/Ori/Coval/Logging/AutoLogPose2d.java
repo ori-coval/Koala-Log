@@ -6,11 +6,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marks a class for which an AutoLogged subclass will be generated.
+ * marks a field or method to be logged as a pose2d
+ * <p>
+ * will only log if the field/method is of type Pose2d
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target({ ElementType.FIELD, ElementType.METHOD })
-public @interface AutoLogOutput {
+public @interface AutoLogPose2d {
     String name() default "";
 
     /**
@@ -18,4 +20,3 @@ public @interface AutoLogOutput {
      */
     boolean postToFtcDashboard() default true;
 }
-
