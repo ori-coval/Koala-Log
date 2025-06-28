@@ -4,6 +4,8 @@
 
 [![](https://jitpack.io/v/ori-coval/Koala-Log.svg)](https://jitpack.io/#ori-coval/Koala-Log)
 
+join the discord https://discord.gg/XunReBq5
+
 ---
 
 ## 🚀 Getting Started
