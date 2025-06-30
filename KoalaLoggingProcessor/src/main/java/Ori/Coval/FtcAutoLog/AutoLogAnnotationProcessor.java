@@ -351,7 +351,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
         // Fields
         for (Element fe : classElem.getEnclosedElements()) {
-            if(fe.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DontLog")))
+            if(fe.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DoNotLog")))
                 continue;
 
             if (!isPose2d(fe)) {
@@ -467,7 +467,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
         //constructor
         for (Element enclosed : classElem.getEnclosedElements()) {
-            if(enclosed.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DontLog")))
+            if(enclosed.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DoNotLog")))
                 continue;
 
             if (enclosed.getKind() != ElementKind.CONSTRUCTOR) continue;
@@ -511,7 +511,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
         // Methods
         for (Element me : classElem.getEnclosedElements()) {
-            if(me.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DontLog")))
+            if(me.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DoNotLog")))
                 continue;
 
             if (me.getKind() != ElementKind.METHOD) continue;
