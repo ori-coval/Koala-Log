@@ -166,6 +166,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
         // 'elements' contains all @AutoLogOutput‐annotated static fields/methods
         for (Element elem : autoLogOutputElements) {
+
             boolean isField = elem.getKind() == ElementKind.FIELD;
             boolean isMethod = elem.getKind() == ElementKind.METHOD
                     && ((ExecutableElement) elem).getParameters().isEmpty();
@@ -193,6 +194,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
         }
 
         for (Element elem : autoLogPose2DElements) {
+
             boolean isField = elem.getKind() == ElementKind.FIELD;
             boolean isMethod = elem.getKind() == ElementKind.METHOD
                     && ((ExecutableElement) elem).getParameters().isEmpty();
@@ -225,6 +227,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                 .returns(void.class);
 
         for (Entry e : autoLogOutputEntries) {
+
             // detect suppliers by return type of static method or field type
             if (!e.isMethod) {
                 if (e.elem.getKind() != ElementKind.FIELD) {
@@ -268,6 +271,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
         }
 
         for (Entry e : autoLogPose2DEntries) {
+
             // for fields:
             boolean isMethod = e.isMethod;
             String member = e.member;
@@ -347,6 +351,9 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
         // Fields
         for (Element fe : classElem.getEnclosedElements()) {
+            if(fe.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DontLog")))
+                continue;
+
             if (!isPose2d(fe)) {
                 if (fe.getKind() != ElementKind.FIELD) continue;
                 VariableElement field = (VariableElement) fe;
@@ -385,7 +392,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                             invokeSuffix = ""; // shouldn't happen
                     }
 
-                    boolean isAutoLogOutput =false;
+                    boolean isAutoLogOutput = false;
                     for (AnnotationMirror mirror : fe.getAnnotationMirrors()) {
                         if (mirror.getAnnotationType().toString().equals("Ori.Coval.Logging.AutoLogOutput")) {
                             isAutoLogOutput = true;
@@ -460,6 +467,9 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
         //constructor
         for (Element enclosed : classElem.getEnclosedElements()) {
+            if(enclosed.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DontLog")))
+                continue;
+
             if (enclosed.getKind() != ElementKind.CONSTRUCTOR) continue;
 
             ExecutableElement constructorElem = (ExecutableElement) enclosed;
@@ -500,8 +510,10 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
 
         // Methods
-        //TODO: fix static methods
         for (Element me : classElem.getEnclosedElements()) {
+            if(me.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DontLog")))
+                continue;
+
             if (me.getKind() != ElementKind.METHOD) continue;
             ExecutableElement method = (ExecutableElement) me;
             Set<Modifier> mmods = method.getModifiers();
