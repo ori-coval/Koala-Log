@@ -7,7 +7,6 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
 import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
-import com.sun.tools.javac.util.Pair;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;
@@ -24,6 +23,8 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
@@ -38,7 +39,7 @@ import java.util.Set;
  * Annotation processor that generates an AutoLogged subclass which
  * overrides fields and methods to log via WpiLog.
  */
-@SupportedAnnotationTypes({"Ori.Coval.Logging.AutoLog", "Ori.Coval.Logging.AutoLogOutput"})
+@SupportedAnnotationTypes({"Ori.Coval.Logging.AutoLog", "Ori.Coval.Logging.AutoLogOutput", "Ori.Coval.Logging.AutoLogPose2d"})
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class AutoLogAnnotationProcessor extends AbstractProcessor {
     private boolean staticRegistryWritten = false;
@@ -48,19 +49,21 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
     private static final ClassName AUTO_LOG_MANAGER = ClassName.get("Ori.Coval.Logging", "AutoLogManager");
     private static final ClassName SUPPLIER_LOG = ClassName.get("Ori.Coval.Logging", "SupplierLog");
 
-    List<Element> elements = new ArrayList<>();
+    List<Element> autoLogOutputElements = new ArrayList<>();
+    List<Element> autoLogPose2DElements = new ArrayList<>();
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         for (TypeElement annotation : annotations) {
             for (Element e : roundEnv.getElementsAnnotatedWith(annotation)) {
-                if (e.getKind() == ElementKind.CLASS) {
-                    boolean postToFtc = getAnnotationValue(e,"Ori.Coval.Logging.AutoLog", "postToFtcDashboard", true);
-                    generateAutoLog((TypeElement) e, postToFtc);
+                if (isAutoLog(e)) {
+                    generateAutoLog((TypeElement) e, getAnnotationValue(e, "Ori.Coval.Logging.AutoLog", "postToFtcDashboard"));
                 }
 
-                if(e.getKind() == ElementKind.METHOD || e.getKind() == ElementKind.FIELD) {
-                    elements.add(e);
+                if (isPose2d(e)) {
+                    autoLogPose2DElements.add(e);
+                } else if (isAutoLogOutput(e)) {
+                    autoLogOutputElements.add(e);
                 }
             }
         }
@@ -71,7 +74,56 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
         return true;
     }
 
-    private boolean getAnnotationValue(Element element, String annotationName, String key, boolean defaultValue) {
+    private boolean isAutoLog(Element e) {
+        return e.getKind() == ElementKind.CLASS && e.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString()
+                .equals("Ori.Coval.Logging.AutoLog"));
+    }
+
+    private boolean isPose2d(Element e) {
+        if ((e.getKind() == ElementKind.METHOD || e.getKind() == ElementKind.FIELD)
+                && e.getAnnotationMirrors().stream()
+                .anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.AutoLogPose2d"))) {
+
+            // determine the relevant TypeMirror
+            TypeMirror tm = (e.getKind() == ElementKind.FIELD)
+                    ? e.asType()
+                    : ((ExecutableElement) e).getReturnType();
+
+            if (tm.getKind() == TypeKind.ARRAY) {
+                ArrayType at = (ArrayType) tm;
+                TypeMirror comp = at.getComponentType();
+                TypeKind kind = comp.getKind();
+
+                // primitive types
+                if (kind == TypeKind.DOUBLE || kind == TypeKind.FLOAT || kind == TypeKind.INT) {
+                    return true;
+                }
+
+                // boxed types
+                if (kind == TypeKind.DECLARED) {
+                    DeclaredType dt = (DeclaredType) comp;
+                    Element elem = dt.asElement();
+                    if (elem instanceof TypeElement) {
+                        String qName = ((TypeElement) elem).getQualifiedName().toString();
+                        return qName.equals("java.lang.Double")
+                                || qName.equals("java.lang.Float")
+                                || qName.equals("java.lang.Integer");
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+
+
+    private boolean isAutoLogOutput(Element e) {
+        return (e.getKind() == ElementKind.METHOD || e.getKind() == ElementKind.FIELD) && e.getAnnotationMirrors().stream()
+                .anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.AutoLogOutput"));
+    }
+
+    private boolean getAnnotationValue(Element element, String annotationName, String key) {
         for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
             if (mirror.getAnnotationType().toString().equals(annotationName)) {
                 for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> entry :
@@ -82,20 +134,25 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                 }
             }
         }
-        return defaultValue;
+        return true;
     }
+
     private void generateStaticRegistry() {
-        String registryPkg  = "Ori.Coval.AutoLog";
+        String registryPkg = "Ori.Coval.AutoLog";
         String registryName = "AutoLogStaticRegistry";
 
         // holder for each entry’s key, owner type, member name, whether it's a method, and post flag
         class Entry {
+            final Element elem;
             final String key;
             final ClassName owner;
             final String member;
             final boolean isMethod;
             final boolean post;
-            Entry(String key, ClassName owner, String member, boolean isMethod, boolean post) {
+
+            Entry(Element elem, String key, ClassName owner, String member,
+                  boolean isMethod, boolean post) {
+                this.elem     = elem;
                 this.key      = key;
                 this.owner    = owner;
                 this.member   = member;
@@ -103,22 +160,21 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                 this.post     = post;
             }
         }
-        List<Entry> entries = new ArrayList<>();
+
+        List<Entry> autoLogOutputEntries = new ArrayList<>();
+        List<Entry> autoLogPose2DEntries = new ArrayList<>();
 
         // 'elements' contains all @AutoLogOutput‐annotated static fields/methods
-        for (Element elem : elements) {
-            boolean isField  = elem.getKind() == ElementKind.FIELD;
+        for (Element elem : autoLogOutputElements) {
+            boolean isField = elem.getKind() == ElementKind.FIELD;
             boolean isMethod = elem.getKind() == ElementKind.METHOD
-                    && ((ExecutableElement)elem).getParameters().isEmpty();
+                    && ((ExecutableElement) elem).getParameters().isEmpty();
             if (!(isField || isMethod)) continue;
             if (!elem.getModifiers().contains(Modifier.STATIC)) continue;
 
             // skip if the enclosing class is itself @AutoLog
             TypeElement enclosing = (TypeElement) elem.getEnclosingElement();
-            boolean hasAutoLog = enclosing.getAnnotationMirrors().stream()
-                    .anyMatch(m -> m.getAnnotationType().toString()
-                            .equals("Ori.Coval.Logging.AutoLog"));
-            if (hasAutoLog) continue;
+
 
             // build owner ClassName
             String pkgName = processingEnv.getElementUtils()
@@ -130,11 +186,36 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
             boolean postToFtc = getAnnotationValue(
                     elem,
                     "Ori.Coval.Logging.AutoLogOutput",
-                    "postToFtcDashboard",
-                    true
+                    "postToFtcDashboard"
             );
 
-            entries.add(new Entry(key, owner, memberName, isMethod, postToFtc));
+            autoLogOutputEntries.add(new Entry(elem, key, owner, memberName, isMethod, postToFtc));
+        }
+
+        for (Element elem : autoLogPose2DElements) {
+            boolean isField = elem.getKind() == ElementKind.FIELD;
+            boolean isMethod = elem.getKind() == ElementKind.METHOD
+                    && ((ExecutableElement) elem).getParameters().isEmpty();
+            if (!(isField || isMethod)) continue;
+            if (!elem.getModifiers().contains(Modifier.STATIC)) continue;
+
+            // skip if the enclosing class is itself @AutoLog
+            TypeElement enclosing = (TypeElement) elem.getEnclosingElement();
+
+            // build owner ClassName
+            String pkgName = processingEnv.getElementUtils()
+                    .getPackageOf(enclosing).getQualifiedName().toString();
+            ClassName owner = ClassName.get(pkgName, enclosing.getSimpleName().toString());
+            String memberName = elem.getSimpleName().toString();
+            String key = enclosing.getSimpleName() + "/" + memberName;
+
+            boolean postToFtc = getAnnotationValue(
+                    elem,
+                    "Ori.Coval.Logging.AutoLogPose2d",
+                    "postToFtcDashboard"
+            );
+
+            autoLogPose2DEntries.add(new Entry(elem, key, owner, memberName, isMethod, postToFtc));
         }
 
         // build the toLog() method
@@ -143,25 +224,23 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                 .addModifiers(Modifier.PUBLIC)
                 .returns(void.class);
 
-        for (Entry e : entries) {
+        for (Entry e : autoLogOutputEntries) {
             // detect suppliers by return type of static method or field type
             if (!e.isMethod) {
+                if (e.elem.getKind() != ElementKind.FIELD) {
+                    // shouldn’t happen, but skip to be safe
+                    continue;
+                }
                 // For static fields, check if it's a Supplier
-                VariableElement field = (VariableElement)
-                        processingEnv.getElementUtils()
-                                .getTypeElement(e.owner.canonicalName())
-                                .getEnclosedElements().stream()
-                                .filter(el -> el.getKind() == ElementKind.FIELD
-                                        && el.getSimpleName().contentEquals(e.member))
-                                .findFirst().get();
+                VariableElement field = (VariableElement)e.elem;
                 String fieldType = field.asType().toString();
                 if (fieldType.endsWith("Supplier")) {
                     // call proper getAsX()
                     String invoke = "";
                     if (fieldType.endsWith("DoubleSupplier")) invoke = ".getAsDouble()";
-                    if (fieldType.endsWith("IntSupplier"))    invoke = ".getAsInt()";
-                    if (fieldType.endsWith("LongSupplier"))   invoke = ".getAsLong()";
-                    if (fieldType.endsWith("BooleanSupplier"))invoke = ".getAsBoolean()";
+                    if (fieldType.endsWith("IntSupplier")) invoke = ".getAsInt()";
+                    if (fieldType.endsWith("LongSupplier")) invoke = ".getAsLong()";
+                    if (fieldType.endsWith("BooleanSupplier")) invoke = ".getAsBoolean()";
                     toLog.addStatement(
                             "$T.log($S, $T.$L$L, $L)",
                             KOALA_LOG, e.key, e.owner, e.member, invoke, e.post
@@ -174,19 +253,12 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                         KOALA_LOG, e.key, e.owner, e.member, e.post
                 );
             } else {
-                // static no‐arg method
-                ExecutableElement method = (ExecutableElement)
-                        processingEnv.getElementUtils()
-                                .getTypeElement(e.owner.canonicalName())
-                                .getEnclosedElements().stream()
-                                .filter(el -> el.getKind() == ElementKind.METHOD
-                                        && el.getSimpleName().contentEquals(e.member))
-                                .map(el -> (ExecutableElement) el)
-                                .findFirst().get();
-                String returnType = method.getReturnType().toString();
-                if (returnType.endsWith("Supplier")) {
-                    // should not happen: Supplier methods return Supplier, not primitive/String
+                if (e.elem.getKind() != ElementKind.METHOD) {
+                    continue;
                 }
+                // static no‐arg method
+                ExecutableElement method = (ExecutableElement) e.elem;
+                String returnType = method.getReturnType().toString();
                 // otherwise regular static no‐arg method
                 toLog.addStatement(
                         "$T.log($S, $T.$L(), $L)",
@@ -194,6 +266,37 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                 );
             }
         }
+
+        for (Entry e : autoLogPose2DEntries) {
+            // for fields:
+            boolean isMethod = e.isMethod;
+            String member = e.member;
+
+            if (!isMethod) {
+                // field is an array of ([x,y,theta])
+                toLog.addStatement(
+                        "$T.logPose2d($S, $T.$L[0], $T.$L[1], $T.$L[2], $L)",
+                        KOALA_LOG,          // $T -> your logger
+                        e.key,              // $S -> the key literal
+                        e.owner, member,    // $T.$L[0]
+                        e.owner, member,    // $T.$L[1]
+                        e.owner, member,    // $T.$L[2]
+                        e.post              // $L -> post flag
+                );
+            } else {
+                // no-arg static method that returns a double[]
+                toLog.addStatement(
+                        "$T.logPose2d($S, $T.$L()[0], $T.$L()[1], $T.$L()[2], $L)",
+                        KOALA_LOG,
+                        e.key,
+                        e.owner, member,     // $T.$L() returns the double[]
+                        e.owner, member,
+                        e.owner, member,
+                        e.post
+                );
+            }
+        }
+
 
         // build and write the registry class
         TypeSpec registry = TypeSpec.classBuilder(registryName)
@@ -221,9 +324,6 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
     }
 
 
-
-
-
     private void generateAutoLog(TypeElement classElem, boolean postToFtcDashBoard) {
         String pkg = getPackageName(classElem);
         String orig = classElem.getSimpleName().toString();
@@ -247,68 +347,114 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
         // Fields
         for (Element fe : classElem.getEnclosedElements()) {
-            if (fe.getKind() != ElementKind.FIELD) continue;
-            VariableElement field = (VariableElement) fe;
-            Set<Modifier> mods = field.getModifiers();
-            if (mods.contains(Modifier.PRIVATE)) continue;
-            String fname = field.getSimpleName().toString();
-            TypeMirror t = field.asType();
-            TypeKind k = t.getKind();
+            if (!isPose2d(fe)) {
+                if (fe.getKind() != ElementKind.FIELD) continue;
+                VariableElement field = (VariableElement) fe;
+                Set<Modifier> mods = field.getModifiers();
+                if (mods.contains(Modifier.PRIVATE)) continue;
+                String fname = field.getSimpleName().toString();
+                TypeMirror t = field.asType();
+                TypeKind k = t.getKind();
 
-            boolean isSupplier = (k == TypeKind.DECLARED && t.toString().equals("java.util.function.LongSupplier"))
-                    || (k == TypeKind.DECLARED && t.toString().equals("java.util.function.DoubleSupplier"))
-                    || (k == TypeKind.DECLARED && t.toString().equals("java.util.function.IntSupplier"))
-                    || (k == TypeKind.DECLARED && t.toString().equals("java.util.function.BooleanSupplier"));
+                boolean isSupplier = (k == TypeKind.DECLARED && t.toString().equals("java.util.function.LongSupplier"))
+                        || (k == TypeKind.DECLARED && t.toString().equals("java.util.function.DoubleSupplier"))
+                        || (k == TypeKind.DECLARED && t.toString().equals("java.util.function.IntSupplier"))
+                        || (k == TypeKind.DECLARED && t.toString().equals("java.util.function.BooleanSupplier"));
 
-            if (!(k.isPrimitive()
-                    || (k == TypeKind.DECLARED && t.toString().equals("java.lang.String"))
-                    || k == TypeKind.ARRAY
-                    || isSupplier))
-                continue;
+                if (!(isLoggableType(t) || isSupplier))
+                    continue;
 
-            String key = orig + "/" + fname;
-            if (isSupplier) {
-                // pick the right method name for the supplier
-                String invokeSuffix;
-                switch (t.toString()) {
-                    case "java.util.function.DoubleSupplier":
-                        invokeSuffix = ".getAsDouble()";
-                        break;
-                    case "java.util.function.IntSupplier":
-                        invokeSuffix = ".getAsInt()";
-                        break;
-                    case "java.util.function.LongSupplier":
-                        invokeSuffix = ".getAsLong()";
-                        break;
-                    case "java.util.function.BooleanSupplier":
-                        invokeSuffix = ".getAsBoolean()";
-                        break;
-                    default:
-                        invokeSuffix = ""; // shouldn't happen
-                }
-
-                for (AnnotationMirror mirror : fe.getAnnotationMirrors()) {
-                    if (mirror.getAnnotationType().toString().equals("Ori.Coval.Logging.AutoLogOutput")) {
-                        boolean postToFtc = getAnnotationValue(fe,
-                                "Ori.Coval.Logging.AutoLogOutput",
-                                "postToFtcDashboard",
-                                true
-                        );
-                        // NOTE: we use two $L slots for fname and invokeSuffix
-                        toLog.addStatement(
-                                "$T.log($S, this.$L$L, $L)",
-                                KOALA_LOG,
-                                key,
-                                fname,
-                                invokeSuffix,
-                                postToFtc
-                        );
+                String key = orig + "/" + fname;
+                if (isSupplier) {
+                    // pick the right method name for the supplier
+                    String invokeSuffix;
+                    switch (t.toString()) {
+                        case "java.util.function.DoubleSupplier":
+                            invokeSuffix = ".getAsDouble()";
+                            break;
+                        case "java.util.function.IntSupplier":
+                            invokeSuffix = ".getAsInt()";
+                            break;
+                        case "java.util.function.LongSupplier":
+                            invokeSuffix = ".getAsLong()";
+                            break;
+                        case "java.util.function.BooleanSupplier":
+                            invokeSuffix = ".getAsBoolean()";
+                            break;
+                        default:
+                            invokeSuffix = ""; // shouldn't happen
                     }
+
+                    boolean isAutoLogOutput =false;
+                    for (AnnotationMirror mirror : fe.getAnnotationMirrors()) {
+                        if (mirror.getAnnotationType().toString().equals("Ori.Coval.Logging.AutoLogOutput")) {
+                            isAutoLogOutput = true;
+
+                            if(!fe.getModifiers().contains(Modifier.STATIC)) {
+                                boolean postToFtc = getAnnotationValue(fe,
+                                        "Ori.Coval.Logging.AutoLogOutput",
+                                        "postToFtcDashboard"
+                                );
+                                // NOTE: we use two $L slots for fname and invokeSuffix
+                                toLog.addStatement(
+                                        "$T.log($S, this.$L$L, $L)",
+                                        KOALA_LOG,
+                                        key,
+                                        fname,
+                                        invokeSuffix,
+                                        postToFtc
+                                );
+                            }
+                        }
+                    }
+
+                    if(!isAutoLogOutput) {
+                        supplierFields.add(fname);
+                        supplierKeys.add(key);
+                    }
+
+                } else {
+                    toLog.addStatement("$T.log($S, this.$L, $L)", KOALA_LOG, key, fname, postToFtcDashBoard);
                 }
-                supplierFields.add(fname);
-                supplierKeys.add(key);
             } else {
-                toLog.addStatement("$T.log($S, this.$L, $L)", KOALA_LOG, key, fname, postToFtcDashBoard);
+
+                String keyBase = orig + "/" + fe.getSimpleName();
+                boolean post = getAnnotationValue(
+                        fe,
+                        "Ori.Coval.Logging.AutoLogPose2d",
+                        "postToFtcDashboard"
+                );
+
+                if(fe.getModifiers().contains(Modifier.STATIC)) continue;
+
+                if (fe.getKind() == ElementKind.FIELD) {
+                    // static or instance @AutoLogPose2d field
+                    VariableElement field = (VariableElement) fe;
+                    String name = field.getSimpleName().toString();
+                    toLog.addStatement(
+                            "$T.logPose2d($S, $L[0], $L[1], $L[2], $L)",
+                            KOALA_LOG,
+                            keyBase,
+                            name, name, name,
+                            post
+                    );
+
+                }
+                else if (fe.getKind() == ElementKind.METHOD) {
+                    // no-arg @AutoLogPose2d method
+                    ExecutableElement method = (ExecutableElement) fe;
+                    String name = method.getSimpleName().toString();
+                    String accessor = "this." + name + "()";
+                    toLog.addStatement(
+                            "$T.logPose2d($S, $L[0], $L[1], $L[2], $L)",
+                            KOALA_LOG,
+                            keyBase,
+                            accessor, accessor, accessor,
+                            post
+                    );
+                }
+
+                continue;  // move on to next element
             }
         }
 
@@ -354,15 +500,15 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
 
         // Methods
+        //TODO: fix static methods
         for (Element me : classElem.getEnclosedElements()) {
             if (me.getKind() != ElementKind.METHOD) continue;
             ExecutableElement method = (ExecutableElement) me;
             Set<Modifier> mmods = method.getModifiers();
             if (!mmods.contains(Modifier.PUBLIC)) continue;
-//            if (!method.getParameters().isEmpty()) continue;
+            if (mmods.contains(Modifier.STATIC)) continue;
             TypeMirror rt = method.getReturnType();
-            TypeKind rtk = rt.getKind();
-            if (!(rtk.isPrimitive() || (rtk == TypeKind.DECLARED && rt.toString().equals("java.lang.String"))))
+            if (!isLoggableType(rt))
                 continue;
             String mname = method.getSimpleName().toString();
             TypeName rtn = TypeName.get(rt);
@@ -387,17 +533,17 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                     .addParameters(paramList)
                     .addStatement("return $T.log($S, result, $L)", KOALA_LOG, key, postToFtcDashBoard);
 
-            MethodSpec override  = overrideBuilder.build();
+            MethodSpec override = overrideBuilder.build();
 
 
             clsBuilder.addMethod(override);
 
-            for (AnnotationMirror mirror : me.getAnnotationMirrors()) {
-                if (mirror.getAnnotationType().toString().equals("Ori.Coval.Logging.AutoLogOutput") && paramList.isEmpty()) {
-                    boolean postToFtc = getAnnotationValue(me,"Ori.Coval.Logging.AutoLogOutput", "postToFtcDashboard", true);
-                    toLog.addStatement("$T.log($S, this.$L(), $L)", KOALA_LOG, key, mname, postToFtc);
-                }
-            }
+//            for (AnnotationMirror mirror : me.getAnnotationMirrors()) {
+//                if (mirror.getAnnotationType().toString().equals("Ori.Coval.Logging.AutoLogOutput") && paramList.isEmpty()) {
+//                    boolean postToFtc = getAnnotationValue(me, "Ori.Coval.Logging.AutoLogOutput", "postToFtcDashboard");
+//                    toLog.addStatement("$T.log($S, this.$L(), $L)", KOALA_LOG, key, mname, postToFtc);
+//                }
+//            }
         }
 
 
@@ -419,5 +565,37 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
             e = e.getEnclosingElement();
         }
         return e == null ? null : ((PackageElement) e).getQualifiedName().toString();
+    }
+
+    private boolean isLoggableType(TypeMirror tm) {
+        TypeKind k = tm.getKind();
+
+        // 1) primitives
+        if (k.isPrimitive()) return true;
+
+        // 2) boxed types and String
+        if (k == TypeKind.DECLARED) {
+            String name = tm.toString();
+            switch (name) {
+                case "java.lang.Boolean":
+                case "java.lang.Byte":
+                case "java.lang.Character":
+                case "java.lang.Short":
+                case "java.lang.Integer":
+                case "java.lang.Long":
+                case "java.lang.Float":
+                case "java.lang.Double":
+                case "java.lang.String":
+                    return true;
+            }
+        }
+
+        // 3) arrays of any of the above (including wrapper arrays, primitive arrays, String[])
+        if (k == TypeKind.ARRAY) {
+            ArrayType at = (ArrayType) tm;
+            return isLoggableType(at.getComponentType());
+        }
+
+        return false;
     }
 }

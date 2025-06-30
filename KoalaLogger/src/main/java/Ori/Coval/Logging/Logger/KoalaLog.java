@@ -54,6 +54,14 @@ public class KoalaLog {
                 post
         );
     }
+    public static Integer log(String name, Integer value, boolean post) {
+        return KoalaLogCore.doLog(
+                name, value, "int32",
+                (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packInts(v), KoalaLogCore.nowMicros()),
+                (n, v) -> FtcDashboard.getInstance().getTelemetry().addData(n, v),
+                post
+        );
+    }
 
     public static float log(String name, float value, boolean post) {
         return KoalaLogCore.doLog(
@@ -67,7 +75,7 @@ public class KoalaLog {
     public static double log(String name, double value, boolean post) {
         return KoalaLogCore.doLog(
                 name, value, "double",
-                (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packDoubles(v), KoalaLogCore.nowMicros()),
+                (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packDoubles(new double[]{v}), KoalaLogCore.nowMicros()),
                 (n, v) -> FtcDashboard.getInstance().getTelemetry().addData(n, v),
                 post
         );
@@ -97,8 +105,24 @@ public class KoalaLog {
                 post
         );
     }
+    public static Boolean[] log(String name, Boolean[] value, boolean post) {
+        return KoalaLogCore.doLog(
+                name, value, "boolean[]",
+                (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packBooleans(v), KoalaLogCore.nowMicros()),
+                (n, v) -> FtcDashboard.getInstance().getTelemetry().addData(n, Arrays.toString(v)),
+                post
+        );
+    }
 
     public static long[] log(String name, long[] value, boolean post) {
+        return KoalaLogCore.doLog(
+                name, value, "int64[]",
+                (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packLongs(v), KoalaLogCore.nowMicros()),
+                (n, v) -> FtcDashboard.getInstance().getTelemetry().addData(n, Arrays.toString(v)),
+                post
+        );
+    }
+    public static Long[] log(String name, Long[] value, boolean post) {
         return KoalaLogCore.doLog(
                 name, value, "int64[]",
                 (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packLongs(v), KoalaLogCore.nowMicros()),
@@ -115,6 +139,14 @@ public class KoalaLog {
                 post
         );
     }
+    public static Integer[] log(String name, Integer[] value, boolean post) {
+        return KoalaLogCore.doLog(
+                name, value, "int64[]",
+                (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packInts(v), KoalaLogCore.nowMicros()),
+                (n, v) -> FtcDashboard.getInstance().getTelemetry().addData(n, Arrays.toString(v)),
+                post
+        );
+    }
 
     public static float[] log(String name, float[] value, boolean post) {
         return KoalaLogCore.doLog(
@@ -124,8 +156,24 @@ public class KoalaLog {
                 post
         );
     }
+    public static Float[] log(String name, Float[] value, boolean post) {
+        return KoalaLogCore.doLog(
+                name, value, "float[]",
+                (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packFloats(v), KoalaLogCore.nowMicros()),
+                (n, v) -> FtcDashboard.getInstance().getTelemetry().addData(n, Arrays.toString(v)),
+                post
+        );
+    }
 
     public static double[] log(String name, double[] value, boolean post) {
+        return KoalaLogCore.doLog(
+                name, value, "double[]",
+                (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packDoubles(v), KoalaLogCore.nowMicros()),
+                (n, v) -> FtcDashboard.getInstance().getTelemetry().addData(n, Arrays.toString(v)),
+                post
+        );
+    }
+    public static Double[] log(String name, Double[] value, boolean post) {
         return KoalaLogCore.doLog(
                 name, value, "double[]",
                 (id, v) -> KoalaLogCore.writeRecord(id, BytePacker.packDoubles(v), KoalaLogCore.nowMicros()),
