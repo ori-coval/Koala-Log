@@ -329,6 +329,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
         String pkg = getPackageName(classElem);
         String orig = classElem.getSimpleName().toString();
         String autoName = orig + "AutoLogged";
+        PackageElement currentPkg = processingEnv.getElementUtils().getPackageOf(classElem);
 
         // Builder for the new class
         TypeSpec.Builder clsBuilder = TypeSpec.classBuilder(autoName)
@@ -374,11 +375,17 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
             if(fe.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DoNotLog")))
                 continue;
 
+            if(fe.getModifiers().contains(Modifier.FINAL)) continue;
+
             if (!isPose2d(fe)) {
                 if (fe.getKind() != ElementKind.FIELD) continue;
                 VariableElement field = (VariableElement) fe;
                 Set<Modifier> mods = field.getModifiers();
                 if (mods.contains(Modifier.PRIVATE)) continue;
+
+                PackageElement fieldPkg = processingEnv.getElementUtils().getPackageOf(field);
+                if (!mods.contains(Modifier.PUBLIC) && !fieldPkg.equals(currentPkg)) continue;
+
                 String fname = field.getSimpleName().toString();
                 TypeMirror t = field.asType();
                 TypeKind k = t.getKind();
@@ -527,10 +534,15 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
             if(me.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DoNotLog")))
                 continue;
 
+            if(me.getModifiers().contains(Modifier.FINAL)) continue;
+
             if (me.getKind() != ElementKind.METHOD) continue;
             ExecutableElement method = (ExecutableElement) me;
             Set<Modifier> mmods = method.getModifiers();
-            if (!mmods.contains(Modifier.PUBLIC)) continue;
+
+            PackageElement fieldPkg = processingEnv.getElementUtils().getPackageOf(method);
+            if (!mmods.contains(Modifier.PUBLIC) && !fieldPkg.equals(currentPkg)) continue;
+
             if (mmods.contains(Modifier.STATIC)) continue;
             TypeMirror rt = method.getReturnType();
             if (!isLoggableType(rt))
