@@ -31,6 +31,8 @@ import javax.tools.Diagnostic;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +53,12 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
     List<Element> autoLogOutputElements = new ArrayList<>();
     List<Element> autoLogPose2DElements = new ArrayList<>();
+
+    private final Set<String> EXCLUDED_CLASSES = new HashSet<>(Arrays.asList(
+                    "LinearOpMode",
+                    "OpMode",
+                    "OpModeInternal"
+    ));
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
@@ -350,7 +358,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
             List<TypeElement> hierarchy = new ArrayList<>();
             TypeElement current = classElem;
             while (current != null
-                    && !current.getQualifiedName().toString().equals("java.lang.Object")) {
+                    && !current.getQualifiedName().toString().equals("java.lang.Object") && !EXCLUDED_CLASSES.contains(current.getSimpleName().toString())) {
                 hierarchy.add(current);
                 TypeMirror sup = current.getSuperclass();
                 if (sup.getKind() != TypeKind.DECLARED) break;
