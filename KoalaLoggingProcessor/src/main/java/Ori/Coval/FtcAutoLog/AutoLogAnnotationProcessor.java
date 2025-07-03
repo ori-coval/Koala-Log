@@ -31,6 +31,8 @@ import javax.tools.Diagnostic;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +53,12 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
     List<Element> autoLogOutputElements = new ArrayList<>();
     List<Element> autoLogPose2DElements = new ArrayList<>();
+
+    private final Set<String> EXCLUDED_CLASSES = new HashSet<>(Arrays.asList(
+                    "LinearOpMode",
+                    "OpMode",
+                    "OpModeInternal"
+    ));
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
@@ -259,9 +267,6 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                 if (e.elem.getKind() != ElementKind.METHOD) {
                     continue;
                 }
-                // static no‐arg method
-                ExecutableElement method = (ExecutableElement) e.elem;
-                String returnType = method.getReturnType().toString();
                 // otherwise regular static no‐arg method
                 toLog.addStatement(
                         "$T.log($S, $T.$L(), $L)",
@@ -332,6 +337,7 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
         String pkg = getPackageName(classElem);
         String orig = classElem.getSimpleName().toString();
         String autoName = orig + "AutoLogged";
+        PackageElement currentPkg = processingEnv.getElementUtils().getPackageOf(classElem);
 
         // Builder for the new class
         TypeSpec.Builder clsBuilder = TypeSpec.classBuilder(autoName)
@@ -344,21 +350,50 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                 .addModifiers(Modifier.PUBLIC)
                 .addJavadoc("Auto-generated telemetry logging\n");
 
+        List<Element> allElements = new ArrayList<>();
+
+        if(getAnnotationValue(classElem, "Ori.Coval.Logging.AutoLog", "logSuperClasses")) {
+
+
+            List<TypeElement> hierarchy = new ArrayList<>();
+            TypeElement current = classElem;
+            while (current != null
+                    && !current.getQualifiedName().toString().equals("java.lang.Object") && !EXCLUDED_CLASSES.contains(current.getSimpleName().toString())) {
+                hierarchy.add(current);
+                TypeMirror sup = current.getSuperclass();
+                if (sup.getKind() != TypeKind.DECLARED) break;
+                current = (TypeElement) processingEnv.getTypeUtils().asElement(sup);
+            }
+
+
+            for (TypeElement te : hierarchy) {
+                allElements.addAll(te.getEnclosedElements());
+            }
+        }
+        else {
+            allElements.addAll(classElem.getEnclosedElements());
+        }
 
         // collect supplier fields so we can make one constructor
         List<String> supplierFields = new ArrayList<>();
         List<String> supplierKeys = new ArrayList<>();
 
         // Fields
-        for (Element fe : classElem.getEnclosedElements()) {
+        for (Element fe : allElements) {
             if(fe.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DoNotLog")))
                 continue;
+
+            if(fe.getModifiers().contains(Modifier.FINAL)) continue;
 
             if (!isPose2d(fe)) {
                 if (fe.getKind() != ElementKind.FIELD) continue;
                 VariableElement field = (VariableElement) fe;
                 Set<Modifier> mods = field.getModifiers();
                 if (mods.contains(Modifier.PRIVATE)) continue;
+
+                PackageElement fieldPkg = processingEnv.getElementUtils().getPackageOf(field);
+                if (!mods.contains(Modifier.PUBLIC) && !fieldPkg.equals(currentPkg)) continue;
+
                 String fname = field.getSimpleName().toString();
                 TypeMirror t = field.asType();
                 TypeKind k = t.getKind();
@@ -460,27 +495,19 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                             post
                     );
                 }
-
-                continue;  // move on to next element
             }
         }
 
         //constructor
         for (Element enclosed : classElem.getEnclosedElements()) {
-            if(enclosed.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DoNotLog")))
-                continue;
-
             if (enclosed.getKind() != ElementKind.CONSTRUCTOR) continue;
-
             ExecutableElement constructorElem = (ExecutableElement) enclosed;
 
             List<ParameterSpec> paramList = new ArrayList<>();
-            List<String> paramNames = new ArrayList<>();
-
+            List<String> paramNames  = new ArrayList<>();
             for (VariableElement param : constructorElem.getParameters()) {
                 String name = param.getSimpleName().toString();
-                TypeName type = TypeName.get(param.asType());
-                paramList.add(ParameterSpec.builder(type, name).build());
+                paramList.add(ParameterSpec.builder(TypeName.get(param.asType()), name).build());
                 paramNames.add(name);
             }
 
@@ -489,14 +516,16 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
                     .addParameters(paramList)
                     .addStatement("super($L)", String.join(", ", paramNames));
 
-            // Inject supplier wrapping logic
+            // Inject supplier wrapping logic (as before)…
             if (!supplierFields.isEmpty()) {
                 for (int i = 0; i < supplierFields.size(); i++) {
-                    String fname = supplierFields.get(i);
-                    String key = supplierKeys.get(i);
                     ctor.addStatement(
                             "super.$L = $T.wrap($S, super.$L, $L)",
-                            fname, SUPPLIER_LOG, key, fname, postToFtcDashBoard
+                            supplierFields.get(i),
+                            SUPPLIER_LOG,
+                            supplierKeys.get(i),
+                            supplierFields.get(i),
+                            postToFtcDashBoard
                     );
                 }
             }
@@ -504,20 +533,24 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
             // Register with AutoLogManager
             ctor.addStatement("$T.register(this)", AUTO_LOG_MANAGER);
 
-            // Add the constructor to the class
             clsBuilder.addMethod(ctor.build());
         }
 
 
         // Methods
-        for (Element me : classElem.getEnclosedElements()) {
+        for (Element me : allElements) {
             if(me.getAnnotationMirrors().stream().anyMatch(m -> m.getAnnotationType().toString().equals("Ori.Coval.Logging.DoNotLog")))
                 continue;
+
+            if(me.getModifiers().contains(Modifier.FINAL)) continue;
 
             if (me.getKind() != ElementKind.METHOD) continue;
             ExecutableElement method = (ExecutableElement) me;
             Set<Modifier> mmods = method.getModifiers();
-            if (!mmods.contains(Modifier.PUBLIC)) continue;
+
+            PackageElement fieldPkg = processingEnv.getElementUtils().getPackageOf(method);
+            if (!mmods.contains(Modifier.PUBLIC) && !fieldPkg.equals(currentPkg)) continue;
+
             if (mmods.contains(Modifier.STATIC)) continue;
             TypeMirror rt = method.getReturnType();
             if (!isLoggableType(rt))
@@ -549,13 +582,6 @@ public class AutoLogAnnotationProcessor extends AbstractProcessor {
 
 
             clsBuilder.addMethod(override);
-
-//            for (AnnotationMirror mirror : me.getAnnotationMirrors()) {
-//                if (mirror.getAnnotationType().toString().equals("Ori.Coval.Logging.AutoLogOutput") && paramList.isEmpty()) {
-//                    boolean postToFtc = getAnnotationValue(me, "Ori.Coval.Logging.AutoLogOutput", "postToFtcDashboard");
-//                    toLog.addStatement("$T.log($S, this.$L(), $L)", KOALA_LOG, key, mname, postToFtc);
-//                }
-//            }
         }
 
 
