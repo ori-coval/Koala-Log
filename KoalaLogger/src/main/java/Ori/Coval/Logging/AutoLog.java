@@ -12,4 +12,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface AutoLog {
     boolean postToFtcDashboard() default true;
+    boolean logSuperClasses() default true;
+
 }
