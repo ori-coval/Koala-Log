@@ -43,6 +43,8 @@ import java.util.Set;
  */
 @SupportedAnnotationTypes({"Ori.Coval.Logging.AutoLog", "Ori.Coval.Logging.AutoLogOutput", "Ori.Coval.Logging.AutoLogPose2d"})
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
+
+//TODO: log methods with ()
 public class AutoLogAnnotationProcessor extends AbstractProcessor {
     private boolean staticRegistryWritten = false;
     // Adjust this to your WpiLog package

@@ -17,6 +17,9 @@ public class AutoLogManager {
         for (Logged loggedClass : loggedClasses) {
             loggedClass.toLog();
         }
+
+        ReflectionLogger.update();
+
         FtcDashboard.getInstance().getTelemetry().update();
     }
 
